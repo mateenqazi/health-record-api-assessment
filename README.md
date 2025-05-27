@@ -1,1 +1,0 @@
-# health-record-api-assessment
