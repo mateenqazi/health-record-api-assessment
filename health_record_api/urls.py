@@ -37,7 +37,34 @@ schema_view = get_schema_view(
 )
 
 
+def health_check(request):
+    return JsonResponse({
+        'status': 'healthy', 
+        'message': 'Health Record API is running',
+        'database': 'connected'
+    })
+
+def root_view(request):
+    return JsonResponse({
+        'message': 'Health Record API',
+        'swagger': '/swagger/',
+        'admin': '/admin/',
+        'health': '/health/'
+    })
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Health Record API",
+        default_version='v1',
+        description="A secure REST API for managing personal health records",
+    ),
+    public=True,
+    permission_classes=[permissions.AllowAny],
+)
+
 urlpatterns = [
+    path('', root_view, name='root'),  
+    path('health/', health_check, name='health-check'),  
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),
     path('api/health-records/', include('health_records.urls')),

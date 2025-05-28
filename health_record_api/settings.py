@@ -132,6 +132,8 @@ CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localho
 if 'RAILWAY_ENVIRONMENT' in os.environ:
     DEBUG = False
     ALLOWED_HOSTS = ['*']
+
+    PORT = os.environ.get('PORT', '8000')
     
     # Database from Railway PostgreSQL
     DATABASES = {
@@ -151,6 +153,10 @@ if 'RAILWAY_ENVIRONMENT' in os.environ:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+    if os.environ.get('REDIS_URL'):
+        CELERY_BROKER_URL = os.environ.get('REDIS_URL')
+        CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
 
 AUTH_USER_MODEL = 'accounts.User'
 
