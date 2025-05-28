@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    platform: linux/arm64
+    environment:
+      POSTGRES_DB: health_records_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:alpine
+    platform: linux/arm64
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    platform: linux/arm64
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DEBUG=1
+      - DB_HOST=db
+      - DB_NAME=health_records_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - CELERY_BROKER_URL=redis://redis:6379  # Fixed: Use redis service name
+      - CELERY_RESULT_BACKEND=redis://redis:6379  # Fixed: Use redis service name
+
+  celery:
+    build: .
+    platform: linux/arm64
+    command: celery -A health_record_api worker --loglevel=info
+    volumes:
+      - .:/code
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DEBUG=1
+      - DB_HOST=db
+      - DB_NAME=health_records_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - CELERY_BROKER_URL=redis://redis:6379  # Fixed: Use redis service name
+      - CELERY_RESULT_BACKEND=redis://redis:6379  # Fixed: Use redis service name
+
+volumes:
+  postgres_data:

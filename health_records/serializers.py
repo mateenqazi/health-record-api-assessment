@@ -7,7 +7,7 @@ class DoctorCommentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = DoctorComment
-        fields = '__all__'
+        fields = ['id', 'comment', 'is_private', 'created_at', 'updated_at', 'doctor']  # Remove health_record
         read_only_fields = ['doctor', 'created_at', 'updated_at']
 
 class HealthRecordSerializer(serializers.ModelSerializer):
