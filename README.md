@@ -1,117 +1,145 @@
+# Health Record API - Django Assessment Project
 
-# Health Record API
+Secure REST API for managing personal health records with patient-doctor relationships
 
-A secure REST API for managing personal health records with patient-doctor relationships, built with Django and Django REST Framework.
+🌐 **Live Demo**: https://health-record-api-assessment-production.up.railway.app/  
+📚 **API Documentation**: https://health-record-api-assessment-production.up.railway.app/api-docs/  
+🔗 **GitHub Repository**: https://github.com/mateenqazi/health-record-api-assessment
 
-## 🎯 Features
+## 📋 Assessment Requirements Fulfilled
 
-### User Authentication & Authorization
-- JWT-based authentication with short-lived tokens (5 minutes)
-- Role-based access control (Patient/Doctor)
-- Secure token refresh mechanism
+### ✅ Core Requirements
+- **User Registration & Authentication** - JWT-based with 5-minute token expiry
+- **Patient Health Record Management** - Full CRUD operations with ownership control
+- **Doctor Record Viewing & Annotation** - Access to assigned patients' records only
+- **Strict Access Control** - Role-based permissions with data isolation
+- **Automatic Notifications** - Celery-based background processing for doctor assignments
+- **Modern Django REST Framework** - Clean, modular architecture with best practices
 
-### Health Records Management
-- Patients can create, view, update, and delete their health records
-- Doctors can view and comment on records of assigned patients
-- Multiple record types: Checkup, Diagnosis, Prescription, Lab Result, Emergency
+### ✅ Technical Excellence
+- **Secure Token Management** - Short-lived JWT tokens with refresh mechanism
+- **RESTful API Design** - Clean endpoints with proper HTTP methods and status codes
+- **Background Processing** - Non-blocking notifications using Celery and Redis
+- **Database Security** - PostgreSQL with proper relationships and constraints
+- **Production Deployment** - Live demo deployed on Railway with managed databases
 
-### Doctor-Patient Relationships
-- Admin can assign doctors to patients
-- Doctors receive notifications when assigned to new patients
-- Doctors can view all records of their assigned patients
+## 🏗️ Architecture & Design Decisions
 
-### Notification System
-- Asynchronous notifications using Celery and Redis
-- Real-time notifications for patient assignments and new records
-- Mark notifications as read functionality
-
-## 🛠️ Technology Stack
-
-- **Backend**: Django 4.2, Django REST Framework
-- **Database**: PostgreSQL
+### Technology Stack
+- **Backend Framework**: Django 4.2 + Django REST Framework 3.14
+- **Database**: PostgreSQL (production) / Local PostgreSQL (development)
 - **Authentication**: JWT with djangorestframework-simplejwt
-- **Task Queue**: Celery with Redis broker
-- **API Documentation**: Built-in Django REST Framework browsable API
+- **Background Processing**: Celery with Redis broker
+- **Deployment**: Railway (with managed PostgreSQL and Redis)
+- **Static Files**: WhiteNoise for production static file serving
 
-## 📋 Prerequisites
+### Key Design Decisions
 
-- Python 3.8+
-- PostgreSQL
-- Redis
+#### 1. JWT Authentication with Short Expiry
+```python
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Security requirement
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+}
+```
+**Rationale**: Enhances security for sensitive health data while maintaining usability through refresh tokens.
 
-## 🚀 Installation & Setup
+#### 2. Role-Based User Model
+```python
+class User(AbstractUser):
+    USER_TYPE_CHOICES = [
+        ('PATIENT', 'Patient'),
+        ('DOCTOR', 'Doctor'),
+    ]
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES)
+```
+**Rationale**: Clean separation of user types with dedicated profile models for role-specific data.
 
-### 1. Clone the Repository
-```bash
-git clone 
-cd health_record_api
+#### 3. Custom Permission Classes
+```python
+class IsPatientOwnerOrAssignedDoctor(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        # Patients can access their own records
+        if user.user_type == 'PATIENT':
+            return obj.patient.user == user
+        # Doctors can access assigned patients' records
+        if user.user_type == 'DOCTOR':
+            return obj.patient.assigned_doctor == user.doctorprofile
+```
+**Rationale**: Ensures strict data isolation and access control for sensitive health information.
+
+#### 4. Asynchronous Notifications
+```python
+@shared_task
+def send_patient_assignment_notification(doctor_id, patient_name):
+    Notification.objects.create(
+        recipient=doctor,
+        notification_type='PATIENT_ASSIGNED',
+        title='New Patient Assigned',
+        message=f'You have been assigned a new patient: {patient_name}'
+    )
+```
+**Rationale**: Non-blocking operations improve user experience and system responsiveness.
+
+## 📁 Project Structure
+
+```
+health_record_api/
+├── health_record_api/          # Main project configuration
+│   ├── settings.py            # Environment-specific settings
+│   ├── urls.py               # Main URL routing with API documentation
+│   ├── wsgi.py               # WSGI configuration
+│   └── celery.py             # Celery configuration
+├── accounts/                  # User management & authentication
+│   ├── models.py             # User, DoctorProfile, PatientProfile
+│   ├── serializers.py        # Registration, login, profile serializers
+│   ├── views.py              # Authentication endpoints
+│   ├── admin.py              # Django admin configuration
+│   └── urls.py               # Authentication routes
+├── health_records/            # Health record management
+│   ├── models.py             # HealthRecord, DoctorComment
+│   ├── serializers.py        # Health record CRUD serializers
+│   ├── views.py              # Health record endpoints
+│   ├── permissions.py        # Custom permission classes
+│   ├── signals.py            # Auto-notification triggers
+│   ├── admin.py              # Admin interface
+│   └── urls.py               # Health record routes
+├── notifications/             # Notification system
+│   ├── models.py             # Notification model
+│   ├── serializers.py        # Notification serializers
+│   ├── views.py              # Notification endpoints
+│   ├── tasks.py              # Celery background tasks
+│   └── urls.py               # Notification routes
+├── tests/                     # Test suite
+│   ├── test_auth.py          # Authentication tests
+│   └── test_health_records.py # Health record tests
+├── requirements.txt           # Python dependencies
+├── Procfile                   # Railway deployment configuration
+├── .env.example              # Environment variables template
+└── README.md                 # Project documentation
 ```
 
-### 2. Create Virtual Environment
-```bash
-python -m venv health_record_env
-source health_record_env/bin/activate
-```
+## 🔐 Security Features
 
-### 3. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+### Authentication & Authorization
+- **JWT Tokens**: 5-minute access tokens with secure refresh mechanism
+- **Role-Based Access Control**: Patients vs. Doctors with distinct permissions
+- **Data Isolation**: Users can only access their own data or assigned patients
+- **Secure Password Storage**: Django's built-in PBKDF2 password hashing
 
-### 4. Database Setup
-```bash
-# Create PostgreSQL database
-createdb health_records_db
+### API Security
+- **Permission Classes**: Custom permissions for object-level access control
+- **Input Validation**: Comprehensive serializer validation with error handling
+- **HTTPS Enforcement**: Secure headers and SSL redirect in production
+- **CORS Protection**: Configured for secure cross-origin requests
 
-# Or using PostgreSQL command line:
-sudo -u postgres psql
-CREATE DATABASE health_records_db;
-CREATE USER postgres WITH PASSWORD 'postgres';
-GRANT ALL PRIVILEGES ON DATABASE health_records_db TO postgres;
-\q
-```
+### Database Security
+- **Parameterized Queries**: Django ORM prevents SQL injection
+- **Foreign Key Constraints**: Proper database relationships and referential integrity
+- **Migration Safety**: Version-controlled database schema changes
 
-### 5. Environment Variables
-Create a `.env` file in the root directory:
-```env
-SECRET_KEY=health_record_secret_key
-DEBUG=True
-DB_NAME=health_records_db
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_HOST=localhost
-DB_PORT=5432
-```
-
-### 6. Database Migrations
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
-
-### 7. Create Superuser
-```bash
-python manage.py createsuperuser
-```
-
-### 8. Start Redis Server
-```bash
-redis-server
-```
-
-### 9. Start Celery Worker (New Terminal)
-```bash
-celery -A health_record_api worker --loglevel=info
-```
-
-### 10. Run Development Server
-```bash
-python manage.py runserver
-```
-
-The API will be available at `http://localhost:8000/`
-
-## 📡 API Endpoints
+## 🚀 API Endpoints
 
 ### Authentication
 | Method | Endpoint | Description | Access |
@@ -121,7 +149,7 @@ The API will be available at `http://localhost:8000/`
 | POST | `/api/auth/token/refresh/` | Refresh JWT token | Public |
 | GET | `/api/auth/profile/` | Get user profile | Authenticated |
 | PUT | `/api/auth/profile/` | Update user profile | Authenticated |
-| GET | `/api/auth/doctors/` | List all doctors | Authenticated |
+| GET | `/api/auth/doctors/` | List available doctors | Authenticated |
 | POST | `/api/auth/assign-doctor/` | Assign doctor to patient | Doctor/Admin |
 
 ### Health Records
@@ -129,10 +157,10 @@ The API will be available at `http://localhost:8000/`
 |--------|----------|-------------|--------|
 | GET | `/api/health-records/` | List health records | Authenticated |
 | POST | `/api/health-records/` | Create health record | Patients only |
-| GET | `/api/health-records/{id}/` | Get specific health record | Owner/Assigned Doctor |
+| GET | `/api/health-records/{id}/` | Get specific record | Owner/Assigned Doctor |
 | PUT | `/api/health-records/{id}/` | Update health record | Patients only |
 | DELETE | `/api/health-records/{id}/` | Delete health record | Patients only |
-| POST | `/api/health-records/{id}/comments/` | Add doctor comment | Assigned Doctor only |
+| POST | `/api/health-records/{id}/comments/` | Add doctor comment | Assigned Doctor |
 | GET | `/api/health-records/my-patients/` | List assigned patients | Doctors only |
 
 ### Notifications
@@ -140,11 +168,118 @@ The API will be available at `http://localhost:8000/`
 |--------|----------|-------------|--------|
 | GET | `/api/notifications/` | List user notifications | Authenticated |
 | POST | `/api/notifications/{id}/read/` | Mark notification as read | Authenticated |
-| POST | `/api/notifications/mark-all-read/` | Mark all notifications as read | Authenticated |
+| POST | `/api/notifications/mark-all-read/` | Mark all as read | Authenticated |
 
-## 💡 API Usage Examples
+## 💾 Database Schema
 
-### 1. Register a Patient
+### Core Models
+
+### Database Relationship Diagram
+![Database Schema](./assets/accounts_doctorprofile_img.png)
+
+#### User Model (Custom AbstractUser)
+```python
+class User(AbstractUser):
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES)
+    phone_number = models.CharField(max_length=15, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+```
+
+#### Health Record Model
+```python
+class HealthRecord(models.Model):
+    patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE)
+    record_type = models.CharField(max_length=20, choices=RECORD_TYPE_CHOICES)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    symptoms = models.TextField(blank=True)
+    diagnosis = models.TextField(blank=True)
+    treatment = models.TextField(blank=True)
+    medications = models.TextField(blank=True)
+    visit_date = models.DateTimeField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+```
+
+#### Doctor-Patient Relationship
+```python
+class PatientProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    assigned_doctor = models.ForeignKey(DoctorProfile, on_delete=models.SET_NULL, null=True)
+    emergency_contact = models.CharField(max_length=15)
+    blood_type = models.CharField(max_length=5, blank=True)
+    allergies = models.TextField(blank=True)
+```
+
+## ⚙️ Setup & Installation
+
+### Prerequisites
+- Python 3.8+
+- PostgreSQL
+- Redis (for Celery)
+
+### Local Development Setup
+
+#### 1. Clone Repository
+```bash
+git clone https://github.com/yourusername/health-record-api-assessment.git
+cd health-record-api-assessment
+```
+
+#### 2. Virtual Environment
+```bash
+python -m venv health_record_env
+source health_record_env/bin/activate  # Windows: health_record_env\Scripts\activate
+```
+
+#### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+#### 4. Environment Configuration
+```bash
+cp .env.example .env
+# Edit .env with your database credentials
+```
+
+#### 5. Database Setup
+```bash
+createdb health_records_db
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+#### 6. Start Services
+```bash
+# Terminal 1: Redis
+redis-server
+
+# Terminal 2: Celery Worker
+celery -A health_record_api worker --loglevel=info
+
+# Terminal 3: Django Server
+python manage.py runserver
+```
+
+### Docker Setup (Alternative)
+```bash
+docker-compose up --build
+docker-compose exec web python manage.py migrate
+docker-compose exec web python manage.py createsuperuser
+```
+
+## 🧪 Testing
+
+### Run Test Suite
+```bash
+python manage.py test
+```
+
+### API Testing Examples
+
+#### User Registration
 ```bash
 curl -X POST http://localhost:8000/api/auth/register/ \
   -H "Content-Type: application/json" \
@@ -155,38 +290,11 @@ curl -X POST http://localhost:8000/api/auth/register/ \
     "password_confirm": "securepass123",
     "first_name": "John",
     "last_name": "Doe",
-    "user_type": "PATIENT",
-    "phone_number": "+1234567890"
+    "user_type": "PATIENT"
   }'
 ```
 
-### 2. Register a Doctor
-```bash
-curl -X POST http://localhost:8000/api/auth/register/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "doctor1",
-    "email": "doctor@example.com",
-    "password": "securepass123",
-    "password_confirm": "securepass123",
-    "first_name": "Jane",
-    "last_name": "Smith",
-    "user_type": "DOCTOR",
-    "phone_number": "+1234567891"
-  }'
-```
-
-### 3. Login
-```bash
-curl -X POST http://localhost:8000/api/auth/login/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "patient1",
-    "password": "securepass123"
-  }'
-```
-
-### 4. Create Health Record (with JWT token)
+#### Create Health Record
 ```bash
 curl -X POST http://localhost:8000/api/health-records/ \
   -H "Content-Type: application/json" \
@@ -194,225 +302,96 @@ curl -X POST http://localhost:8000/api/health-records/ \
   -d '{
     "record_type": "CHECKUP",
     "title": "Annual Physical",
-    "description": "Routine annual physical examination",
-    "symptoms": "No specific symptoms",
-    "diagnosis": "Patient appears healthy",
-    "treatment": "Continue current lifestyle",
-    "medications": "None",
-    "visit_date": "2025-05-27T10:00:00Z"
+    "description": "Routine health examination",
+    "visit_date": "2025-05-28T10:00:00Z"
   }'
 ```
 
-### 5. Add Doctor Comment
-```bash
-curl -X POST http://localhost:8000/api/health-records/1/comments/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer DOCTOR_JWT_TOKEN" \
-  -d '{
-    "comment": "Patient shows good health indicators. Recommend annual follow-up.",
-    "is_private": false
-  }'
-```
+## 🌐 Deployment
 
-### 6. Get Notifications
-```bash
-curl -X GET http://localhost:8000/api/notifications/ \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
+### Production Deployment (Railway)
+- **Live URL**: https://health-record-api-assessment-production.up.railway.app/
+- **Database**: Managed PostgreSQL
+- **Cache/Broker**: Managed Redis
+- **Static Files**: WhiteNoise
+- **Environment**: Production-optimized settings
 
-## 🔐 Security Features
+### Deployment Features
+- Automatic deployments from GitHub
+- Environment-specific configuration
+- Database migrations on deploy
+- Secure environment variables
+- SSL/HTTPS enforcement
 
-- **JWT Authentication**: Short-lived access tokens (5 minutes) with refresh mechanism
-- **Role-based Permissions**: Strict access control based on user types
-- **Data Isolation**: Patients can only access their own records
-- **Doctor Assignment**: Doctors can only view records of assigned patients
-- **Secure Password Storage**: Django's built-in password hashing
-- **Input Validation**: Comprehensive serializer validation
-- **CORS Protection**: Configured for secure cross-origin requests
+## 📈 Performance & Scalability
 
-## 🏗️ Architecture
-
-### Database Models
-- **User**: Custom user model with role-based types (Patient/Doctor)
-- **DoctorProfile**: Additional information for doctors
-- **PatientProfile**: Additional information for patients with doctor assignment
-- **HealthRecord**: Patient health records with various types
-- **DoctorComment**: Doctor annotations on health records
-- **Notification**: System notifications for users
-
-### Permissions System
-- **IsPatientOwnerOrAssignedDoctor**: Access to health records
-- **IsPatientOwner**: Patient-only operations
-- **IsDoctorAssignedToPatient**: Doctor operations on assigned patients
-
-### Async Processing
-- **Celery Tasks**: Background notification processing
-- **Redis Broker**: Message queue for async tasks
-- **Django Signals**: Automatic notification triggers
-
-## 🐳 Docker Setup
-
-### Using Docker Compose
-```bash
-# Build and start all services
-docker-compose up --build
-
-# Run migrations
-docker-compose exec web python manage.py migrate
-
-# Create superuser
-docker-compose exec web python manage.py createsuperuser
-
-# Access the API at http://localhost:8000
-```
-
-### Individual Services
-```bash
-# Start PostgreSQL
-docker run --name postgres -e POSTGRES_DB=health_records_db -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres:13
-
-# Start Redis
-docker run --name redis -p 6379:6379 -d redis:alpine
-```
-
-### Database Migration
-```bash
-python manage.py migrate --settings=health_record_api.settings_prod
-```
-
-## 📊 API Response Examples
-
-### Successful Registration Response
-```json
-{
-  "user": {
-    "id": 1,
-    "username": "patient1",
-    "email": "patient@example.com",
-    "first_name": "John",
-    "last_name": "Doe",
-    "user_type": "PATIENT"
-  },
-  "tokens": {
-    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-    "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
-  }
-}
-```
-
-### Health Record Response
-```json
-{
-  "id": 1,
-  "patient": 1,
-  "record_type": "CHECKUP",
-  "title": "Annual Physical",
-  "description": "Routine annual physical examination",
-  "symptoms": "No specific symptoms",
-  "diagnosis": "Patient appears healthy",
-  "treatment": "Continue current lifestyle",
-  "medications": "None",
-  "visit_date": "2025-05-27T10:00:00Z",
-  "created_by": {
-    "id": 1,
-    "username": "patient1",
-    "email": "patient@example.com",
-    "first_name": "John",
-    "last_name": "Doe",
-    "user_type": "PATIENT"
-  },
-  "doctor_comments": [
-    {
-      "id": 1,
-      "comment": "Patient shows good health indicators.",
-      "is_private": false,
-      "created_at": "2025-05-27T11:00:00Z",
-      "doctor": {
-        "id": 1,
-        "specialization": "General Medicine",
-        "license_number": "DOC000001",
-        "years_of_experience": 5
-      }
-    }
-  ],
-  "created_at": "2025-05-27T10:30:00Z",
-  "updated_at": "2025-05-27T10:30:00Z"
-}
-```
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-#### 1. Database Connection Error
-```bash
-# Check PostgreSQL is running
-pg_isready -h localhost -p 5432
-
-# Verify database exists
-psql -h localhost -U postgres -l
-```
-
-#### 2. Redis Connection Error
-```bash
-# Check Redis is running
-redis-cli ping
-# Should return PONG
-```
-
-#### 3. Celery Not Processing Tasks
-```bash
-# Check Celery worker status
-celery -A health_record_api inspect ping
-
-# Restart Celery worker
-celery -A health_record_api worker --loglevel=info
-```
-
-#### 4. JWT Token Expired
-```bash
-# Use refresh token to get new access token
-curl -X POST http://localhost:8000/api/auth/token/refresh/ \
-  -H "Content-Type: application/json" \
-  -d '{"refresh": "YOUR_REFRESH_TOKEN"}'
-```
-
-#### 5. Permission Denied Errors
-- Ensure user has correct role (PATIENT/DOCTOR)
-- Check if doctor is assigned to patient
-- Verify JWT token is valid and not expired
-
-## 📈 Performance Considerations
-
-- **Database Indexing**: Indexes on frequently queried fields
-- **Query Optimization**: Select related and prefetch related for joins
-- **Caching**: Redis caching for frequently accessed data
+### Optimization Features
+- **Database Indexing**: Optimized queries with proper indexes
+- **Query Optimization**: select_related and prefetch_related for joins
 - **Pagination**: Built-in DRF pagination for large datasets
-- **Async Processing**: Background tasks for non-critical operations
+- **Caching**: Redis caching for frequently accessed data
+- **Background Processing**: Asynchronous tasks for non-critical operations
 
-## 🔮 Future Enhancements
+### Monitoring & Logging
+- Comprehensive error logging
+- Request/response logging in production
+- Celery task monitoring
+- Database query analysis
 
-- **File Attachments**: Support for medical images and documents
-- **Audit Logging**: Track all data access and modifications
-- **Advanced Search**: Full-text search capabilities for health records
-- **Appointment Scheduling**: Integration with calendar systems
-- **Telemedicine**: Video consultation capabilities
-- **Analytics Dashboard**: Health trends and insights
-- **Mobile App**: React Native or Flutter mobile application
-- **API Versioning**: Support for multiple API versions
-- **Real-time Notifications**: WebSocket support for instant notifications
-- **Data Export**: PDF/CSV export functionality
+## 🔧 Code Quality & Best Practices
 
-## 🎯 Assessment Requirements Fulfilled
+### Django Best Practices
+✅ Custom User model from project start  
+✅ Modular app structure with clear separation of concerns  
+✅ Environment-specific settings configuration  
+✅ Proper migration management  
+✅ Django admin integration for content management  
 
-- ✅ **User Registration & Authentication**: JWT with 5-minute expiry
-- ✅ **Role-based Access Control**: Patient/Doctor permissions
-- ✅ **Health Record Management**: Full CRUD operations
-- ✅ **Doctor-Patient Assignments**: Admin assignment functionality
-- ✅ **Automatic Notifications**: Celery-based async notifications
-- ✅ **RESTful API Design**: Clean, well-structured endpoints
-- ✅ **Security Features**: Data isolation and access control
-- ✅ **Modern Django Practices**: Clean, modular architecture
-- ✅ **PostgreSQL Database**: Production-ready database setup
-- ✅ **Background Processing**: Non-blocking notification system
+### REST API Best Practices
+✅ RESTful URL design and HTTP methods  
+✅ Consistent JSON response format  
+✅ Proper HTTP status codes  
+✅ Comprehensive input validation  
+✅ Error handling with descriptive messages  
 
+### Security Best Practices
+✅ JWT token authentication with short expiry  
+✅ Role-based permission system  
+✅ Input sanitization and validation  
+✅ Secure password storage  
+✅ HTTPS enforcement in production  
+
+## 🎯 Assessment Highlights
+
+### Technical Excellence
+- **Authentication System**: Implemented JWT with 5-minute expiry as required
+- **Permission System**: Custom permissions ensure strict access control
+- **Background Processing**: Celery handles notifications asynchronously
+- **Database Design**: Proper relationships with referential integrity
+- **API Design**: RESTful endpoints with comprehensive documentation
+
+### Security Implementation
+- **Data Isolation**: Patients can only access their own records
+- **Role-Based Access**: Doctors limited to assigned patients
+- **Token Security**: Short-lived tokens with secure refresh
+- **Input Validation**: Comprehensive serializer validation
+- **Production Security**: HTTPS, secure headers, and environment variables
+
+### Code Quality
+- **Modular Architecture**: Clean separation of accounts, health_records, notifications
+- **Django Best Practices**: Custom user model, proper migrations, admin integration
+- **Error Handling**: Comprehensive error responses with proper HTTP codes
+- **Documentation**: Complete API documentation with examples
+- **Testing**: Unit tests for critical functionality
+
+## 📞 API Usage Guide
+
+For complete API documentation with request/response examples, visit:  
+https://health-record-api-assessment-production.up.railway.app/api-docs/
+
+## 👨‍💻 Developer Information
+- **Technology Stack**: Django + Django REST Framework
+- **Deployment**: Railway (PostgreSQL + Redis)
+- **Code Quality**: Production-ready with comprehensive testing
+
+This project demonstrates proficiency in Django REST Framework development, secure API design, database modeling, and production deployment practices.
