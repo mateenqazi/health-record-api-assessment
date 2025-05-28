@@ -1,0 +1,9 @@
+{
+  "build": {
+    "builder": "dockerfile",
+    "dockerfilePath": "Dockerfile.railway"
+  },
+  "deploy": {
+    "restartPolicyType": "always"
+  }
+}
