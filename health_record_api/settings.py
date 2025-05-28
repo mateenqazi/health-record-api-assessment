@@ -132,9 +132,7 @@ CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localho
 if 'RAILWAY_ENVIRONMENT' in os.environ or os.environ.get('PORT'):
     DEBUG = False
     ALLOWED_HOSTS = [
-        'health-record-api-assessment-production.up.railway.app',  # Add your exact domain
-        '*.railway.app',  # Allow all Railway subdomains
-        '*'  # Temporary - allow all for debugging
+        '*' 
     ]
 
     PORT = os.environ.get('PORT', '8000')
@@ -148,10 +146,17 @@ if 'RAILWAY_ENVIRONMENT' in os.environ or os.environ.get('PORT'):
     CELERY_BROKER_URL = os.environ.get('REDIS_URL')
     CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
 
-    
-    
-    # Static files with WhiteNoise
+    # Static files configuration
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    STATIC_URL = '/static/'
+    
+    # Fix the STATICFILES_STORAGE setting
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'  # Correct spelling
+    
+    # WhiteNoise settings
+    WHITENOISE_USE_FINDERS = True
+    WHITENOISE_AUTOREFRESH = True
+    
 
     os.makedirs(STATIC_ROOT, exist_ok=True)
     
@@ -175,11 +180,22 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Additional locations of static files
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ] if DEBUG else []
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
