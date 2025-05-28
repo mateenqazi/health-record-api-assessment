@@ -129,9 +129,13 @@ CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379'
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379')
 
 # Railway production settings
-if 'RAILWAY_ENVIRONMENT' in os.environ:
+if 'RAILWAY_ENVIRONMENT' in os.environ or os.environ.get('PORT'):
     DEBUG = False
-    ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = [
+        'health-record-api-assessment-production.up.railway.app',  # Add your exact domain
+        '*.railway.app',  # Allow all Railway subdomains
+        '*'  # Temporary - allow all for debugging
+    ]
 
     PORT = os.environ.get('PORT', '8000')
     
@@ -143,16 +147,19 @@ if 'RAILWAY_ENVIRONMENT' in os.environ:
     # Use Railway's managed Redis
     CELERY_BROKER_URL = os.environ.get('REDIS_URL')
     CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
+
+    
     
     # Static files with WhiteNoise
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+    os.makedirs(STATIC_ROOT, exist_ok=True)
     
     # Security settings
-    SECURE_SSL_REDIRECT = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # SECURE_SSL_REDIRECT = True
+    # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # SESSION_COOKIE_SECURE = True
+    # CSRF_COOKIE_SECURE = True
 
     if os.environ.get('REDIS_URL'):
         CELERY_BROKER_URL = os.environ.get('REDIS_URL')
@@ -175,3 +182,24 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

@@ -2,5 +2,5 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "gunicorn health_record_api.wsgi:application --bind 0.0.0.0:$PORT"
+startCommand = "gunicorn health_record_api.wsgi:application --bind 0.0.0.0:8000"
 restartPolicyType = "always"
