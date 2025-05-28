@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
+import dj_database_url
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -133,14 +135,7 @@ if 'RAILWAY_ENVIRONMENT' in os.environ:
     
     # Database from Railway PostgreSQL
     DATABASES = {
-       'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('PGDATABASE'),
-            'USER': os.environ.get('PGUSER'),
-            'PASSWORD': os.environ.get('PGPASSWORD'),
-            'HOST': os.environ.get('PGHOST'),
-            'PORT': os.environ.get('PGPORT', '5432'),
-        }
+       'default': dj_database_url.parse(os.environ.get('DATABASE_URL'))
     }
     
     # Use Railway's managed Redis
