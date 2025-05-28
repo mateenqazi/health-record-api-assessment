@@ -36,3 +36,12 @@ class HealthRecordCreateSerializer(serializers.ModelSerializer):
             'record_type', 'title', 'description', 'symptoms',
             'diagnosis', 'treatment', 'medications', 'visit_date'
         ]
+
+class PatientSummarySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    email = serializers.CharField()
+    phone = serializers.CharField()
+    blood_type = serializers.CharField()
+    total_records = serializers.IntegerField()
+    last_visit = serializers.DateTimeField(allow_null=True)
